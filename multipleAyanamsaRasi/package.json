@@ -1,0 +1,13 @@
+{
+  "name": "swiss-ephemeris-api",
+  "version": "1.0.0",
+  "description": "A Node.js API to calculate Rasi using Swiss Ephemeris.",
+  "main": "app.js",
+  "scripts": {
+    "start": "node app.js"
+  },
+  "dependencies": {
+    "express": "^4.18.2",
+    "sweph": "^2.0.1"
+  }
+}
