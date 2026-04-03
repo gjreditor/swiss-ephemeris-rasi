@@ -2,10 +2,11 @@ import express from "express";
 import axios from "axios";
 import sweph from "sweph";
 import cors from "cors";
-console.log("sweph keys sample:", Object.keys(sweph).slice(0, 30));
-console.log("typeof julday:", typeof sweph.julday);
-console.log("typeof swe_julday:", typeof sweph.swe_julday);
-console.log("SE_GREG_CAL:", sweph.SE_GREG_CAL);
+console.log("typeof set_sid_mode:", typeof sweph.set_sid_mode);
+console.log("typeof calc_ut:", typeof sweph.calc_ut);
+console.log("SE_MOON:", sweph.SE_MOON);
+console.log("SEFLG_SWIEPH:", sweph.SEFLG_SWIEPH);
+console.log("SEFLG_SIDEREAL:", sweph.SEFLG_SIDEREAL);
 const app = express();
 const port = process.env.PORT || 3000;
 
@@ -26,12 +27,12 @@ const userState = {};
 const testUserState = {};
 
 const ayanamsas = [
-  { name: "Lahiri", id: sweph.SE_SIDM_LAHIRI },
-  { name: "Krishnamurti", id: sweph.SE_SIDM_KRISHNAMURTI },
-  { name: "Raman", id: sweph.SE_SIDM_RAMAN },
-  { name: "Fagan-Bradley", id: sweph.SE_SIDM_FAGAN_BRADLEY },
-  { name: "De Luce", id: sweph.SE_SIDM_DELUCE },
-  { name: "Djwhal Khul", id: sweph.SE_SIDM_DJWHAL_KHUL },
+  { name: "Lahiri", id: 1 },
+  { name: "Krishnamurti", id: 5 },
+  { name: "Raman", id: 3 },
+  { name: "Fagan-Bradley", id: 0 },
+  { name: "De Luce", id: 2 },
+  { name: "Djwhal Khul", id: 6 },
 ];
 
 const rasis = [
