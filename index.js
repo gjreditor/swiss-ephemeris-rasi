@@ -18,7 +18,7 @@ const corsOptions = {
 const GREEN_API_INSTANCE_ID = process.env.GREEN_API_INSTANCE_ID;
 const GREEN_API_TOKEN = process.env.GREEN_API_TOKEN;
 
-// sweph constants used as numeric values
+// Numeric constants because direct constant exports were undefined in your setup
 const GREG_CAL = 1;
 const PLANET_MOON = 1;
 const FLG_SWIEPH = 2;
@@ -165,7 +165,12 @@ function calculateMoonDetails(dateStr, timeStr, timezoneStr) {
       return `${ayanamsa.name}: Error - ${moonPosition.error}`;
     }
 
-    const lon = moonPosition.longitude;
+    const lon = moonPosition?.data?.[0];
+
+    if (typeof lon !== "number") {
+      return `${ayanamsa.name}: Error - Unexpected calc_ut result: ${JSON.stringify(moonPosition)}`;
+    }
+
     const nakshatraSpan = 13 + 1 / 3;
     const rasiIndex = Math.floor(lon / 30);
     const nakshatraIndex = Math.floor(lon / nakshatraSpan);
@@ -267,7 +272,6 @@ app.get("/health", (req, res) => {
   });
 });
 
-// Real WhatsApp webhook
 app.post("/webhook", async (req, res) => {
   try {
     const { chatId, message } = extractChatAndMessage(req.body);
@@ -297,7 +301,6 @@ app.post("/webhook", async (req, res) => {
   }
 });
 
-// Browser test route
 app.post("/test-webhook", (req, res) => {
   try {
     const { chatId, message } = extractChatAndMessage(req.body);
@@ -329,9 +332,6 @@ app.post("/test-webhook", (req, res) => {
   }
 });
 
-// =========================
-// START
-// =========================
 app.listen(port, () => {
   console.log(`Server running on port ${port}`);
 });
