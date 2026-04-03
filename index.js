@@ -2,7 +2,13 @@ import express from "express";
 import axios from "axios";
 import * as sweph from "sweph";
 import cors from "cors";
+import path from "path";
+import { fileURLToPath } from "url";
 
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
+
+// IMPORTANT: Point to the folder where you put the .se1 files
+sweph.set_ephe_path(path.join(__dirname, "ephe"));
 const app = express();
 const port = process.env.PORT || 3000;
 
