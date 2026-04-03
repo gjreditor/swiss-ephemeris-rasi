@@ -2,7 +2,10 @@ import express from "express";
 import axios from "axios";
 import sweph from "sweph";
 import cors from "cors";
-
+console.log("sweph keys sample:", Object.keys(sweph).slice(0, 30));
+console.log("typeof julday:", typeof sweph.julday);
+console.log("typeof swe_julday:", typeof sweph.swe_julday);
+console.log("SE_GREG_CAL:", sweph.SE_GREG_CAL);
 const app = express();
 const port = process.env.PORT || 3000;
 
@@ -86,14 +89,12 @@ function calculateMoonDetails(dateStr, timeStr, timezoneStr) {
   const localHour = hour + (minute / 60);
   const utcHour = localHour - timezone;
 
-  // FIXED: use julday, not swe_julday
-  const jd = sweph.julday(year, month, day, utcHour, sweph.SE_GREG_CAL);
+  // 1 = Gregorian calendar
+  const jd = sweph.julday(year, month, day, utcHour, 1);
 
   return ayanamsas.map((ayanamsa) => {
-    // FIXED: use set_sid_mode, not swe_set_sid_mode
     sweph.set_sid_mode(ayanamsa.id, 0, 0);
 
-    // FIXED: use calc_ut, not swe_calc_ut
     const moonPosition = sweph.calc_ut(
       jd,
       sweph.SE_MOON,
@@ -105,8 +106,8 @@ function calculateMoonDetails(dateStr, timeStr, timezoneStr) {
     }
 
     const lon = moonPosition.longitude;
-    const rasiIndex = Math.floor(lon / 30);
     const nakshatraSpan = 13 + 1 / 3;
+    const rasiIndex = Math.floor(lon / 30);
     const nakshatraIndex = Math.floor(lon / nakshatraSpan);
     const pada = Math.floor((lon % nakshatraSpan) / (nakshatraSpan / 4)) + 1;
 
