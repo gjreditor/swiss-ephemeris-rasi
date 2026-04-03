@@ -83,12 +83,22 @@ function calculateMoonDetails(dateStr, timeStr, timezoneStr) {
   const [hour, minute] = timeStr.split(":").map(Number);
   const timezone = parseFloat(timezoneStr);
 
-  const utcHour = hour + minute / 60 - timezone;
-  const julianDay = sweph.swe_julday(year, month, day, utcHour);
+  const localHour = hour + (minute / 60);
+  const utcHour = localHour - timezone;
+
+  // FIXED: use julday, not swe_julday
+  const jd = sweph.julday(year, month, day, utcHour, sweph.SE_GREG_CAL);
 
   return ayanamsas.map((ayanamsa) => {
-    sweph.swe_set_sid_mode(ayanamsa.id, 0, 0);
-    const moonPosition = sweph.swe_calc_ut(julianDay, sweph.SE_MOON);
+    // FIXED: use set_sid_mode, not swe_set_sid_mode
+    sweph.set_sid_mode(ayanamsa.id, 0, 0);
+
+    // FIXED: use calc_ut, not swe_calc_ut
+    const moonPosition = sweph.calc_ut(
+      jd,
+      sweph.SE_MOON,
+      sweph.SEFLG_SWIEPH | sweph.SEFLG_SIDEREAL
+    );
 
     if (moonPosition.error) {
       return `${ayanamsa.name}: Error - ${moonPosition.error}`;
@@ -198,7 +208,9 @@ function processConversation(store, chatId, message) {
 }
 
 app.get("/", (req, res) => {
-  res.send("Rasi bot running");
+  res.send("Rasi
+::contentReference[oaicite:1]{index=1}
+ bot running");
 });
 
 app.get("/health", (req, res) => {
