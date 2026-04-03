@@ -208,9 +208,7 @@ function processConversation(store, chatId, message) {
 }
 
 app.get("/", (req, res) => {
-  res.send("Rasi
-::contentReference[oaicite:1]{index=1}
- bot running");
+  res.send("Rasi bot running");
 });
 
 app.get("/health", (req, res) => {
