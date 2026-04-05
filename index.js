@@ -103,6 +103,26 @@ const nakshatras = [
 // =========================
 // HELPERS
 // =========================
+// NEW HELPER: Fetch Lat/Long from City Name
+async function getGeoCoordinates(city) {
+  try {
+    const url = `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(city)}&format=json&limit=1`;
+    // Note: Nominatim requires a User-Agent header
+    const response = await axios.get(url, { headers: { "User-Agent": "RasiBot/1.0" } });
+    if (response.data && response.data.length > 0) {
+      return {
+        lat: parseFloat(response.data[0].lat),
+        lon: parseFloat(response.data[0].lon),
+        displayName: response.data[0].display_name
+      };
+    }
+    return null;
+  } catch (error) {
+    console.error("Geocoding error:", error);
+    return null;
+  }
+}
+
 function isValidDateString(value) {
   return /^\d{4}-\d{2}-\d{2}$/.test(value);
 }
@@ -148,119 +168,89 @@ async function sendMessage(chatId, text) {
   });
 }
 
-function calculateMoonDetails(dateStr, timeStr, timezoneStr) {
+// UPDATED CALCULATION: Now includes Lat/Long for more precision
+function calculateMoonDetails(dateStr, timeStr, timezoneStr, lat, lon) {
   const [year, month, day] = dateStr.split("-").map(Number);
   const [hour, minute] = timeStr.split(":").map(Number);
   const timezone = parseFloat(timezoneStr);
 
   const localHour = hour + minute / 60;
   const utcHour = localHour - timezone;
-
   const jd = sweph.julday(year, month, day, utcHour, GREG_CAL);
 
   return ayanamsas.map((ayanamsa) => {
     sweph.set_sid_mode(ayanamsa.id, 0, 0);
 
-    const moonPosition = sweph.calc_ut(
-      jd,
-      PLANET_MOON,
-      FLG_SWIEPH | FLG_SIDEREAL
-    );
+    // Calculate Moon Position
+    const moonPosition = sweph.calc_ut(jd, PLANET_MOON, FLG_SWIEPH | FLG_SIDEREAL);
+    
+    // NEW: Calculate Houses/Ascendant using Lat/Long
+    // 'P' is for Placidus, 'K' for Koch, etc. 
+    const houses = sweph.houses_ex(jd, FLG_SIDEREAL, lat, lon, 'P');
 
-    if (moonPosition?.error) {
-      return `${ayanamsa.name}: Error - ${moonPosition.error}`;
-    }
+    if (moonPosition?.error) return `${ayanamsa.name}: Error`;
 
-    const lon = moonPosition?.data?.[0];
-
-    if (typeof lon !== "number") {
-      return `${ayanamsa.name}: Error - Unexpected calc_ut result: ${JSON.stringify(moonPosition)}`;
-    }
-
+    const m_lon = moonPosition?.data?.[0];
     const nakshatraSpan = 13 + 1 / 3;
-    const rasiIndex = Math.floor(lon / 30);
-    const nakshatraIndex = Math.floor(lon / nakshatraSpan);
-    const pada = Math.floor((lon % nakshatraSpan) / (nakshatraSpan / 4)) + 1;
+    const rasiIndex = Math.floor(m_lon / 30);
+    const nakshatraIndex = Math.floor(m_lon / nakshatraSpan);
+    const pada = Math.floor((m_lon % nakshatraSpan) / (nakshatraSpan / 4)) + 1;
 
-    return `${ayanamsa.name}: ${rasis[rasiIndex]}, ${nakshatras[nakshatraIndex]} Pada ${pada} (${lon.toFixed(2)}°)`;
+    // We can now also return the Ascendant (Lagna) since we have Lat/Long
+    const ascendant = houses.ascendant;
+    const ascRasi = rasis[Math.floor(ascendant / 30)];
+
+    return `*${ayanamsa.name}*\n  Moon: ${rasis[rasiIndex]}, ${nakshatras[nakshatraIndex]} P${pada}\n  Ascendant (Lagna): ${ascRasi}`;
   });
 }
 
-function processConversation(store, chatId, message) {
+async function processConversation(store, chatId, message) {
   const user = getOrCreateSession(store, chatId);
 
   if (message === "rasi") {
     user.step = 1;
     user.data = {};
-    return {
-      done: false,
-      step: 1,
-      reply: "🌙 Please enter your *birth date* in format YYYY-MM-DD",
-    };
+    return { done: false, step: 1, reply: "🌙 Please enter your *birth date* (YYYY-MM-DD)" };
   }
 
   if (user.step === 1) {
-    if (!isValidDateString(message)) {
-      return {
-        done: false,
-        step: 1,
-        reply: "❌ Invalid format. Please enter date as YYYY-MM-DD",
-      };
-    }
-
+    if (!isValidDateString(message)) return { done: false, step: 1, reply: "❌ Format: YYYY-MM-DD" };
     user.data.date = message;
     user.step = 2;
-
-    return {
-      done: false,
-      step: 2,
-      reply: "🕒 Please enter your *birth time* in 24-hour format HH:MM (e.g. 14:30)",
-    };
+    return { done: false, step: 2, reply: "🕒 Please enter your *birth time* (HH:MM)" };
   }
 
   if (user.step === 2) {
-    if (!isValidTimeString(message)) {
-      return {
-        done: false,
-        step: 2,
-        reply: "❌ Invalid format. Please enter time as HH:MM",
-      };
-    }
-
+    if (!isValidTimeString(message)) return { done: false, step: 2, reply: "❌ Format: HH:MM" };
     user.data.time = message;
     user.step = 3;
-
-    return {
-      done: false,
-      step: 3,
-      reply: "🌍 Please enter your *timezone offset* (e.g. 5.5 for IST, -4 for EDT)",
-    };
+    return { done: false, step: 3, reply: "🌍 Enter your *timezone offset* (e.g. 5.5)" };
   }
 
   if (user.step === 3) {
-    if (!isValidTimezone(message)) {
-      return {
-        done: false,
-        step: 3,
-        reply: "❌ Invalid number. Please enter a valid timezone between -12 and +14 (e.g. 5.5)",
-      };
+    if (!isValidTimezone(message)) return { done: false, step: 3, reply: "❌ Invalid offset" };
+    user.data.timezone = message;
+    user.step = 4;
+    return { done: false, step: 4, reply: "🏙️ Please enter your *City of Birth* (e.g., Mumbai, London)" };
+  }
+
+  if (user.step === 4) {
+    const geo = await getGeoCoordinates(message);
+    if (!geo) {
+      return { done: false, step: 4, reply: "❌ Could not find city. Please try another city nearby." };
     }
 
-    const results = calculateMoonDetails(user.data.date, user.data.time, message);
+    const results = calculateMoonDetails(user.data.date, user.data.time, user.data.timezone, geo.lat, geo.lon);
     clearSession(store, chatId);
 
     return {
       done: true,
       step: 0,
-      reply: `🌕 *Your Moon Details:*\n\n${results.join("\n")}`,
+      reply: `🌕 *Birth Details for ${geo.displayName}:*\n\n${results.join("\n\n")}`,
     };
   }
 
-  return {
-    done: false,
-    step: 0,
-    reply: "👋 Send *rasi* to begin the Moon Sign + Nakshatra calculation.",
-  };
+  return { done: false, step: 0, reply: "👋 Send *rasi* to begin." };
 }
 
 // =========================
